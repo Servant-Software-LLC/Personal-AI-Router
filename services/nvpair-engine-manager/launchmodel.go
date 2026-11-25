@@ -109,7 +109,10 @@ func (e *Executor) changeLaunchModel(ctx context.Context, engine string, spec *A
 		return nil, errors.New(`launch_model params must be {"model": "<model id>"}`)
 	}
 	model := strings.TrimSpace(request.Model)
-	if model == "" || (!forRequest && !hfModelIDRe.MatchString(model)) {
+	if model == "" || (!forRequest && !validLaunchModelID(spec, model)) {
+		if spec.Variant {
+			return nil, fmt.Errorf("%q is not a valid model id (want a Hugging Face id such as org/name, or org/name:VARIANT)", request.Model)
+		}
 		return nil, fmt.Errorf("%q is not a valid model id (want a Hugging Face id such as org/name)", request.Model)
 	}
 
@@ -166,6 +169,18 @@ func (e *Executor) changeLaunchModel(ctx context.Context, engine string, spec *A
 		text, changed, err := withLaunchFlag(current.LaunchText, spec.Flag, model)
 		if err != nil {
 			return err
+		}
+		if spec.FileFlag != "" {
+			file, err := launchModelFile(edit.st.modelsDir, model)
+			if err != nil {
+				return err
+			}
+			var fileChanged bool
+			text, fileChanged, err = withLaunchFlag(text, spec.FileFlag, file)
+			if err != nil {
+				return err
+			}
+			changed = changed || fileChanged
 		}
 		if !changed && current.Running {
 			return nil

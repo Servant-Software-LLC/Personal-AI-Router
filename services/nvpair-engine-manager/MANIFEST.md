@@ -276,7 +276,12 @@ Exactly one of `http`, `cmd`, `remove_path`, `hf_cache`, or `launch_model`:
   blob is gone are left out. `size` is what the snapshot takes on disk. This is
   a check on file layout, not on whether the engine supports the architecture.
   A missing directory is an empty cache. Does **not** require the engine to be
-  running. With `"delete": true` and `"tool": "hf"` (only as `delete_model`),
+  running. With `"gguf": true` (only as `list_models`) the action lists the
+  cache's GGUF files instead, one entry per file named `org/name:VARIANT`, the
+  variant being the shortest run of the file name's trailing dash-separated
+  parts that `launch_model.file_flag` resolves back to that file alone. A file
+  no variant singles out, a vision projector and a split GGUF are left out. A
+  GGUF inventory cannot back `advertised_models: "available"`. With `"delete": true` and `"tool": "hf"` (only as `delete_model`),
   the action instead removes the model named by `{"model": "<org/name>"}` by
   running `<tool> cache rm model/<org/name> --cache-dir <dir> --yes`, the tool
   being looked up beside the engine binary as for `hf_pull`. The Hugging Face
@@ -301,6 +306,17 @@ Exactly one of `http`, `cmd`, `remove_path`, `hf_cache`, or `launch_model`:
   start, like the other refusals before launch, so a client that does not wait
   for the reply still learns of it. Requires `runtime.editable_launch`
   and `runtime.ready` on every platform.
+  Two optional fields serve an engine that loads a GGUF file (Splash).
+  `launch_model.variant: true` also accepts `org/name:VARIANT`, the variant being
+  a short name such as `Q4_K_M` (letters, digits, `.`, `_`, `-`, at most 64
+  characters, no `--` or `..`). `launch_model.file_flag` (such as
+  `"--model-dir"`) names a second flag that the action sets to the GGUF file the
+  id resolves to in the platform's `models_dir`, which must be a store in the
+  Hugging Face cache layout. The file is the snapshot's GGUF whose name holds the
+  variant, ignoring case; vision projectors (`mmproj*`) are skipped, and no match,
+  more than one match or a split GGUF is refused. The path comes from that
+  lookup, never from the caller. `file_flag` requires `variant`, a flag other
+  than `flag`, and a `models_dir` on every platform.
 
 An optional **`result`** declares how `engine:models` extracts a normalized
 name list from the action's JSON response: `array` is the top-level array

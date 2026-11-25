@@ -48,7 +48,11 @@ func (e *Executor) runHFCacheAction(ctx context.Context, st *engineState, engine
 	if err != nil {
 		return nil, err
 	}
-	models, err := scanHFCache(expandPath(dir))
+	scan := scanHFCache
+	if act.HFCache.GGUF {
+		scan = scanGGUFStore
+	}
+	models, err := scan(expandPath(dir))
 	if err != nil {
 		return nil, err
 	}

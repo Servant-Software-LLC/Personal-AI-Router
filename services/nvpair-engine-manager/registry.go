@@ -422,6 +422,11 @@ type ActionHFCache struct {
 	// Tool is the file name of the Hugging Face CLI that performs a delete
 	// (`hf cache rm`), looked up beside the engine binary as for hf_pull.
 	Tool string `json:"tool,omitempty"`
+	// GGUF lists the cache's GGUF files instead of vLLM's safetensors models,
+	// one entry per file, each named "org/name:VARIANT" so a launch_model
+	// action with file_flag resolves it back to that same file. Only a
+	// list_models action may set it.
+	GGUF bool `json:"gguf,omitempty"`
 }
 
 // ActionHFPull downloads a model repository. Tool is the file name of the
@@ -438,6 +443,18 @@ type ActionHFPull struct {
 // launch settings and restarts a running engine on it.
 type ActionLaunchModel struct {
 	Flag string `json:"flag"`
+
+	// Variant also accepts an id that names one file of a repository after a
+	// colon, "org/name:VARIANT", the way Splash and llama.cpp name a GGUF
+	// quantization. Off, only a plain Hugging Face id is accepted.
+	Variant bool `json:"variant,omitempty"`
+
+	// FileFlag names a second launch flag, such as "--model-dir", that is set
+	// to the local GGUF file the id resolves to in the platform's models_dir,
+	// a store in the Hugging Face cache layout. The path comes from that
+	// lookup and never from the caller. It requires Variant and a models_dir
+	// on every platform.
+	FileFlag string `json:"file_flag,omitempty"`
 }
 
 // ActionHTTP is a templated call against the engine's loopback base URL.
@@ -860,6 +877,9 @@ func (m *Manifest) Validate() error {
 				if p.Runtime.Ready == nil {
 					return fmt.Errorf("action %q: launch_model requires platform %q to declare runtime.ready", name, key)
 				}
+				if a.LaunchModel.FileFlag != "" && p.ModelsDir == "" {
+					return fmt.Errorf("action %q: launch_model.file_flag requires platform %q to declare models_dir", name, key)
+				}
 			}
 		}
 		if a.RestartAfter {
@@ -874,6 +894,11 @@ func (m *Manifest) Validate() error {
 		action, ok := m.Actions["list_models"]
 		if !ok || action.HFCache == nil {
 			return fmt.Errorf("advertised_models available requires a cached model inventory")
+		}
+		// Loading on request checks a model's cache snapshot the way vLLM
+		// loads it, which a GGUF inventory does not describe.
+		if action.HFCache.GGUF {
+			return fmt.Errorf("advertised_models available does not support a GGUF inventory")
 		}
 		for _, platform := range m.Platforms {
 			if !platform.Runtime.WaitForModel {
@@ -1157,8 +1182,16 @@ func (a *Action) validate(name string) error {
 	}
 	if hasLaunchModel {
 		flag := a.LaunchModel.Flag
-		if !strings.HasPrefix(flag, "-") || strings.ContainsAny(flag, " \t=") {
+		if !isLaunchFlag(flag) {
 			return fmt.Errorf("action %q: launch_model.flag %q must be a flag such as \"--model\"", name, flag)
+		}
+		if fileFlag := a.LaunchModel.FileFlag; fileFlag != "" {
+			if !isLaunchFlag(fileFlag) || fileFlag == flag {
+				return fmt.Errorf("action %q: launch_model.file_flag %q must be a flag other than launch_model.flag, such as \"--model-dir\"", name, fileFlag)
+			}
+			if !a.LaunchModel.Variant {
+				return fmt.Errorf("action %q: launch_model.file_flag requires launch_model.variant", name)
+			}
 		}
 	}
 	if hasHFCache && strings.TrimSpace(a.HFCache.Dir) == "" {
@@ -1169,6 +1202,9 @@ func (a *Action) validate(name string) error {
 	}
 	if hasHFCache && a.HFCache.Delete != (strings.TrimSpace(a.HFCache.Tool) != "") {
 		return fmt.Errorf("action %q: hf_cache.delete and hf_cache.tool go together", name)
+	}
+	if hasHFCache && a.HFCache.GGUF && name != "list_models" {
+		return fmt.Errorf("action %q: hf_cache.gguf belongs to list_models", name)
 	}
 	if hasRemovePath {
 		if strings.TrimSpace(a.RemovePath.Path) == "" || strings.TrimSpace(a.RemovePath.Root) == "" {
@@ -1400,4 +1436,10 @@ func resolveArgs(in []string, vars map[string]string) ([]string, error) {
 		out[i] = r
 	}
 	return out, nil
+}
+
+// isLaunchFlag reports whether s is one launch flag, such as "--model", with no
+// value or whitespace attached.
+func isLaunchFlag(s string) bool {
+	return strings.HasPrefix(s, "-") && !strings.ContainsAny(s, " \t=")
 }
