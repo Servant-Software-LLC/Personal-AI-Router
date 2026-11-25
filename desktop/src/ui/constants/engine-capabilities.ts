@@ -87,5 +87,27 @@ export const EngineCapabilities: Record<EngineType, EngineCaps> = {
             label: 'vLLM',
             url: 'https://huggingface.co/models?pipeline_tag=text-generation&library=safetensors&sort=trending'
         }
+    },
+    splash: {
+        hasExpiry: false,
+        // Splash serves one model per process, like vLLM, so Eject stops the
+        // engine and frees all of its GPU memory. Load starts it again.
+        hasEject: true,
+        // Apple Silicon on macOS 26 or newer only.
+        hasInstall: ['darwin'],
+        hasEnginePort: true,
+        hasInstallPath: false,
+        hasProxyWebUI: false,
+        hasPreferredNode: false,
+        hasCrashAlert: false,
+        // The model list is read from the store on disk, so it is there
+        // before a serving model is selected.
+        hasModelSearchOnlyWhenRunning: false,
+        // Models are copied into the store by hand; PAIR neither downloads
+        // nor deletes them for Splash yet, so there is no catalog either.
+        hasDeleteModel: false,
+        // Load writes the model and its GGUF file into the launch arguments
+        // and restarts Splash on them.
+        loadRestartsEngine: true
     }
 }

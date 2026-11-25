@@ -118,6 +118,14 @@ describe('engines a node cannot run', () => {
                 processStatus: 'unsupported',
                 enginePort: null,
                 proxyPort: null
+            },
+            // Splash runs only on Apple Silicon Macs.
+            {
+                engineType: 'splash',
+                nodeId,
+                processStatus: 'unsupported',
+                enginePort: null,
+                proxyPort: null
             }
         ])
 

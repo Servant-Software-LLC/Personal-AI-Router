@@ -7,6 +7,7 @@ import {
     EngineDefaultLinks,
     EngineDisplayNames,
     EngineManagerNames,
+    EnginesListingModelsWhenStopped,
     EngineTypes
 } from '@/shared/constants/engines'
 import { engineManagerName, engineTypeFromManagerName, isEngineType } from '@/shared/utils/engines'
@@ -16,8 +17,8 @@ import { gatewayEndpointDisplayUrl } from '@/ui/utils/gateway-inference-paths'
 
 describe('engine identity', () => {
     it('enables llama.cpp workflows on every platform', () => {
-        expect(EngineTypes).toEqual(['ollama', 'lm-studio', 'llama-cpp', 'vllm'])
-        expect(EnabledEngineTypes).toEqual(['ollama', 'lm-studio', 'llama-cpp', 'vllm'])
+        expect(EngineTypes).toEqual(['ollama', 'lm-studio', 'llama-cpp', 'vllm', 'splash'])
+        expect(EnabledEngineTypes).toEqual(['ollama', 'lm-studio', 'llama-cpp', 'vllm', 'splash'])
         expect(getWelcomeEngineCandidates('Windows')).toContain('llama-cpp')
         expect(getWelcomeEngineCandidates('MacOS')).toContain('llama-cpp')
         expect(getWelcomeEngineCandidates('Linux')).toContain('llama-cpp')
@@ -28,8 +29,33 @@ describe('engine identity', () => {
             ollama: true,
             'lm-studio': true,
             'llama-cpp': true,
-            vllm: true
+            vllm: true,
+            splash: true
         })
+    })
+
+    it('offers Splash only on macOS', () => {
+        expect(getWelcomeEngineCandidates('MacOS')).toContain('splash')
+        expect(getWelcomeEngineCandidates('Linux')).not.toContain('splash')
+        expect(getWelcomeEngineCandidates('Windows')).not.toContain('splash')
+    })
+
+    it('maps Splash to its engine-manager wire id and one-model-per-process capabilities', () => {
+        expect(engineManagerName('splash')).toBe('splash')
+        expect(engineTypeFromManagerName('splash')).toBe('splash')
+        expect(isEngineType('splash')).toBe(true)
+        expect(EngineDisplayNames.splash).toBe('Splash')
+        // Splash serves one model per process: Eject stops it and Load restarts
+        // it. Models are copied into its store by hand, so it has no catalog and
+        // no Delete, and its list is read from disk while it is stopped.
+        expect(EngineCapabilities.splash).toMatchObject({
+            hasEject: true,
+            hasDeleteModel: false,
+            loadRestartsEngine: true,
+            hasModelSearchOnlyWhenRunning: false
+        })
+        expect(EngineCapabilities.splash.engineHub).toBeUndefined()
+        expect(EnginesListingModelsWhenStopped).toContain('splash')
     })
 
     it('offers vLLM on Linux and macOS, not Windows', () => {

@@ -201,7 +201,7 @@ export function ModelManager({ backend, nodeId }: { backend: BackendInfo; nodeId
 
     return (
         <Stack gap="4">
-            {backend.type === 'vllm' &&
+            {(backend.type === 'vllm' || backend.type === 'splash') &&
                 backend.processStatus === 'awaiting-model' &&
                 !modelLoadPending &&
                 !models.some(model => model.status === 'loading') && (
@@ -212,9 +212,10 @@ export function ModelManager({ backend, nodeId }: { backend: BackendInfo; nodeId
                         attributes={{ BannerHeader: { className: 'min-w-0 flex-1' } }}
                     >
                         <Text kind="body/regular/sm">
-                            <strong>No model loaded.</strong> Load a downloaded model from the list
-                            below, or add one. Requests to the PAIR vLLM endpoint can also load
-                            downloaded models.
+                            <strong>No model loaded.</strong>{' '}
+                            {backend.type === 'splash'
+                                ? 'Load a model from the list below. Splash serves GGUF models already copied into ~/.llamacpp, with their DFlash2 drafts.'
+                                : 'Load a downloaded model from the list below, or add one. Requests to the PAIR vLLM endpoint can also load downloaded models.'}
                         </Text>
                     </Banner>
                 )}

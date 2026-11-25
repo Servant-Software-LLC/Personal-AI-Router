@@ -15,7 +15,8 @@ export const WELCOME_ENGINE_DEFAULT_SELECTED: Record<EngineType, boolean> = {
     ollama: true,
     'lm-studio': true,
     'llama-cpp': true,
-    vllm: true
+    vllm: true,
+    splash: true
 }
 
 export function getWelcomeEngineCandidates(os: PlatformDisplayName): EngineType[] {
