@@ -12,7 +12,7 @@ node offers and where to reach them.
 
 What a discovered node can actually serve is a separate question, answered after
 discovery. A node may be running [Ollama](https://ollama.com/), LM Studio,
-llama.cpp, vLLM, any combination, or none, and its model inventory is fetched over
+llama.cpp, vLLM, Splash, any combination, or none, and its model inventory is fetched over
 HTTP from its engine-manager rather than crammed into mDNS TXT records, which
 are too small to carry it.
 
@@ -31,7 +31,9 @@ never intercepted.
 The llama.cpp and vLLM facades are enabled by default alongside Ollama and LM Studio.
 The llama.cpp facade exposes OpenAI-compatible traffic on `http://localhost:8080`
 while the managed router runs on `8081`. The vLLM facade (the engine itself runs on
-Linux and Apple Silicon macOS) uses `http://localhost:8000` with its managed engine on `8001`. A safe fallback is reported when a facade port is
+Linux and Apple Silicon macOS) uses `http://localhost:8000` with its managed engine on `8001`.
+The Splash facade (Apple Silicon macOS 26 or newer) uses `http://localhost:8095` with its
+managed engine on `8096`, since Splash's own default of `8000` is vLLM's facade. A safe fallback is reported when a facade port is
 occupied. The desktop and TUI expose each engine's managed lifecycle and
 inventory, plus llama.cpp's downloads and load/unload actions; vLLM serves one
 model per process, so loading another downloaded model restarts it on that model. `--proxy-engines` can still restrict the

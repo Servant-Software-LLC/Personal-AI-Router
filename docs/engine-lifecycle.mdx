@@ -145,6 +145,36 @@ When you install an engine, consider the following:
   a saved selection leaves the enabled engine waiting for another model. vLLM
   does not unload automatically after inactivity. Use **Eject** to release its
   memory.
+- Splash is available on Apple Silicon Macs running macOS 26 or newer. PAIR
+  downloads a checksum-pinned [Splash](https://github.com/incoai/splash) release
+  and runs it offline: it serves only GGUF models already on the Mac and never
+  downloads one. Its model store is `~/.llamacpp`, which it shares with
+  llama.cpp, so a model copied in once serves both. While enabled, its model
+  list shows each GGUF there as `org/name:VARIANT`, such as
+  `local/Qwen3.8-27B-GGUF:Q4_K_M`, before any model is loaded. **Load** restarts Splash on the chosen file, and a
+  failed switch restores the previous model. Splash serves one model per
+  process, so **Eject** stops it, as with vLLM. Splash speeds up generation with
+  a DFlash2 draft model that it finds in the same store, so copy the draft in
+  alongside the model. There is no **Add model** or **Delete** for Splash yet,
+  and a request does not load a model.
+
+  To add a model by hand, place its files in the Hugging Face cache layout. For
+  a GGUF and its draft:
+
+  ```sh
+  commit=0123456789abcdef0123456789abcdef01234567
+  add() { # add <org--name> <file>...
+    dir="$HOME/.llamacpp/models--$1"; shift
+    mkdir -p "$dir/refs" "$dir/snapshots/$commit"
+    printf '%s' "$commit" > "$dir/refs/main"
+    cp "$@" "$dir/snapshots/$commit/"
+  }
+  add local--Qwen3.8-27B-GGUF Qwen3.8-27B-Q4_K_M.gguf
+  add incoai--Qwen3.8-27B-DFlash2 Qwen3.8-27B-DFlash2/config.json Qwen3.8-27B-DFlash2/model.safetensors
+  ```
+
+  PAIR reads the store each time it lists Splash's models, so the new model
+  appears without restarting Splash.
 
 PAIR-managed llama.cpp models sleep after five minutes without inference work.
 This releases model and KV-cache memory, and the next request wakes the model
