@@ -1,0 +1,63 @@
+{
+  "$schema": "../manifest.schema.json",
+  "engine": "splash",
+  "display_name": "Splash",
+  "manifest_version": 1,
+  "advertised_models": "loaded",
+  "models_dir": "~/.llamacpp",
+  "uninstall": { "remove": ["{install_dir}"] },
+  "runtime": {
+    "bin": "{install_dir}/splash",
+    "editable_launch": {
+      "fixed_args": ["serve", "--offline", "--language-only", "--no-webui", "--idle-release", "off"],
+      "controls": [
+        { "flags": ["--host"], "value": "{server.host}" },
+        { "flags": ["--port"], "value": "{server.port}" }
+      ]
+    },
+    "wait_for_model": true,
+    "args": ["serve", "--offline", "--language-only", "--no-webui", "--idle-release", "off", "--host", "{host}", "--port", "{port}"],
+    "env": { "HF_HUB_CACHE": "{models_dir}" },
+    "bind": "127.0.0.1",
+    "port": 8096,
+    "ready": { "http": "http://127.0.0.1:{port}/ready", "status": 200, "timeout_s": 1800 },
+    "stop": { "signal": "term", "grace_s": 20 },
+    "health": { "http": "http://127.0.0.1:{port}/health", "status": 200, "interval_s": 5 }
+  },
+  "platforms": {
+    "darwin/arm64": {
+      "detect": ["{install_dir}/splash"],
+      "install": {
+        "fetch": {
+          "url": "https://github.com/incoai/splash/releases/download/1.7.3/splash-1.7.3-arm64-macos26.tar.gz",
+          "sha256": "1b2d70f105bef2d14887d8257903dd715d630c138711e8afe1ce838e5e849c45"
+        },
+        "run": [
+          "sh", "-c",
+          "set -eu; [ \"$(uname -m)\" = arm64 ] || { echo 'Splash needs an Apple Silicon Mac (arm64)' >&2; exit 1; }; macos_major=$(sw_vers -productVersion | cut -d. -f1); [ \"${macos_major:-0}\" -ge 26 ] 2>/dev/null || { echo \"Splash needs macOS 26 or newer (found: ${macos_major:-unknown}). Update macOS and try again.\" >&2; exit 1; }; free_kb=$(df -Pk \"$2\" | awk 'NR==2 {print $4}'); [ \"${free_kb:-0}\" -ge 2097152 ] || { echo 'Splash needs at least 2 GB of free disk space for the engine; models are stored separately' >&2; exit 1; }; tar -xzf \"$1\" -C \"$2\" --strip-components=1; printf '%s\\n' '#!/bin/sh' 'exec \"$(dirname -- \"$0\")/python/bin/python3\" -u \"$(dirname -- \"$0\")/install/launcher.py\" \"$@\"' > \"$2/splash\"; chmod 755 \"$2/splash\"",
+          "splash-install", "{download}", "{install_dir}"
+        ]
+      }
+    }
+  },
+  "actions": {
+    "list_models": {
+      "description": "List the GGUF models in the store (~/.llamacpp, in the Hugging Face cache layout, shared with llama.cpp), one per file, named org/name:VARIANT, such as local/Qwen3.8-27B-GGUF:Q4_K_M. Needs no running engine. Models are copied into the store by hand; Splash downloads nothing.",
+      "hf_cache": { "dir": "{models_dir}", "gguf": true },
+      "result": { "array": "data", "field": "id" }
+    },
+    "loaded_models": {
+      "description": "List the model this Splash server is serving (it serves exactly one). Its id is the --model value, such as local/Qwen3.8-27B-GGUF:Q4_K_M, which is what peers and the proxy route inference requests by.",
+      "http": { "method": "GET", "path": "/v1/models" },
+      "result": { "array": "data", "field": "id" }
+    },
+    "load_model": {
+      "description": "Serve a different model (params: {\"model\": \"<org/name:VARIANT>\"}). The model must already be in the store (~/.llamacpp, in the Hugging Face cache layout) along with its DFlash2 draft; Splash runs offline and downloads nothing. Splash serves one model per process, so this saves the model and the GGUF file it names into the launch arguments and restarts the engine on them; if the new model does not start, the previous one is restored.",
+      "launch_model": { "flag": "--model", "variant": true, "file_flag": "--model-dir" }
+    },
+    "unload_model": {
+      "description": "Eject the model Splash is serving (params: {\"model\": \"<id>\"}). This stops its serving process and frees its GPU memory while keeping the engine enabled. Load starts serving again.",
+      "stop_engine": true
+    }
+  }
+}

@@ -67,10 +67,10 @@ func waitsForEngineReadiness(path, engine string) bool {
 	// cancel that is succeeding as failed, and the row rolls back to
 	// "Downloading" under a transfer that is stopping.
 	//
-	// vLLM's load_model restarts the engine on the new model and replies once
-	// it is ready.
+	// vLLM's and Splash's load_model restart the engine on the new model and
+	// reply once it is ready.
 	if path == controlLoadPath {
-		return engine == "ollama" || engine == "vllm"
+		return engine == "ollama" || engine == "vllm" || engine == "splash"
 	}
 	return path == controlStartPath || path == controlDeletePath || path == controlCancelPullPath
 }

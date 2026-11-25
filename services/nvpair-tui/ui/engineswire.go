@@ -152,6 +152,16 @@ var modelWires = map[string]modelWire{
 		"delete": modelOnly("delete_model"),
 		"pull":   modelOnly("pull_model"),
 	},
+	// Splash, like vLLM, serves one model per process: load restarts it on the
+	// model and unload stops it. Its manifest declares no pull or delete yet
+	// (models are copied into its store by hand), so those reach
+	// engine-manager under the usual names and are refused there.
+	engines.NameSplash: {
+		"load":   modelOnly("load_model"),
+		"unload": modelOnly("unload_model"),
+		"delete": modelOnly("delete_model"),
+		"pull":   modelOnly("pull_model"),
+	},
 }
 
 // pullsWhileStopped are the engines whose download does not go through their
@@ -169,6 +179,7 @@ var downloadExamples = map[string]string{
 	engines.NameLMStudio: "lmstudio-community/Qwen3-8B-GGUF",
 	engines.NameLlamaCPP: "ggml-org/gemma-3-1b-it-GGUF:Q4_K_M",
 	engines.NameVLLM:     "Qwen/Qwen3.5-4B",
+	engines.NameSplash:   "local/Qwen3.8-27B-GGUF:Q4_K_M",
 }
 
 // downloadPrompt is the placeholder for the download-by-name field, with an

@@ -158,6 +158,13 @@ var vllmBaseRoutes = []route{
 	{Path: "/v1/models", Role: roleModelListOpenAIGET},
 }
 
+// splashBaseRoutes is the engine-specific surface that Splash exposes before
+// the shared routes are added. Like vLLM it serves one model per process, so
+// the fleet inventory is what makes /v1/models useful across nodes.
+var splashBaseRoutes = []route{
+	{Path: "/v1/models", Role: roleModelListOpenAIGET},
+}
+
 // openAIInferenceRoutes is the OpenAI-compatible inference surface.
 var openAIInferenceRoutes = []route{
 	{Path: "/v1/chat/completions", Role: roleInferencePOST},
@@ -178,10 +185,12 @@ func buildProfiles() []engineProfile {
 	lmstudio, _ := engines.ByName("lmstudio")
 	llamacpp, _ := engines.ByName("llamacpp")
 	vllm, _ := engines.ByName("vllm")
+	splash, _ := engines.ByName(engines.NameSplash)
 	ollamaRoutes := slices.Concat(ollamaBaseRoutes, openAIInferenceRoutes, anthropicInferenceRoutes)
 	lmStudioRoutes := slices.Concat(lmStudioBaseRoutes, openAIInferenceRoutes, anthropicInferenceRoutes)
 	llamaCPPRoutes := slices.Concat(llamaCPPBaseRoutes, openAIInferenceRoutes)
 	vllmRoutes := slices.Concat(vllmBaseRoutes, openAIInferenceRoutes)
+	splashRoutes := slices.Concat(splashBaseRoutes, openAIInferenceRoutes, anthropicInferenceRoutes)
 
 	return []engineProfile{
 		{
@@ -215,6 +224,13 @@ func buildProfiles() []engineProfile {
 			Routes:                vllmRoutes,
 			ModelNaming:           exactID,
 			ReservedPersistedPort: 8001,
+		},
+		{
+			Engine:                splash,
+			StandalonePort:        8095,
+			Routes:                splashRoutes,
+			ModelNaming:           exactID,
+			ReservedPersistedPort: 8096,
 		},
 	}
 }

@@ -135,6 +135,7 @@ const (
 	NameLMStudio = "lmstudio"
 	NameLlamaCPP = "llamacpp"
 	NameVLLM     = "vllm"
+	NameSplash   = "splash"
 )
 
 // all is the ordered engine set. Ollama is first; see the package comment.
@@ -171,6 +172,16 @@ var all = []Engine{
 		FacadePort:       8000,
 		EnginePortBase:   8001,
 		PortFile:         "vllm-proxy-port.json",
+	},
+	{
+		// Splash's own default port is 8000, which vLLM's facade already
+		// claims, so PAIR gives it a pair of its own.
+		Name:             NameSplash,
+		DisplayName:      "Splash",
+		DiscoveryService: noderec.ServiceSplash,
+		FacadePort:       8095,
+		EnginePortBase:   8096,
+		PortFile:         "splash-proxy-port.json",
 	},
 }
 

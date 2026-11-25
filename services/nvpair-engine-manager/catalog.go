@@ -522,6 +522,8 @@ func normalizeCatalogEngine(engine string) string {
 		return "llamacpp"
 	case "vllm":
 		return "vllm"
+	case "splash":
+		return "splash"
 	default:
 		return e
 	}

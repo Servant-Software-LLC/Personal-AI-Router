@@ -112,7 +112,7 @@ func TestBundledLlamaCPP_DisablesCORSByDefault(t *testing.T) {
 func TestBundledManifests_DeclareReviewedNetworkingControls(t *testing.T) {
 	reg := loadWithOverrides(t, t.TempDir())
 	// Adding a bundled engine requires an explicit networking review and cases.
-	wantEngines := []string{"llamacpp", "lmstudio", "ollama", "vllm"}
+	wantEngines := []string{"llamacpp", "lmstudio", "ollama", "splash", "vllm"}
 	names := reg.Names()
 	slices.Sort(names)
 	assert.Equal(t, wantEngines, names, "review networking controls for every bundled engine")
@@ -139,6 +139,12 @@ func TestBundledManifests_DeclareReviewedNetworkingControls(t *testing.T) {
 					require.Equal(t, []string{"serve"}, policy.FixedArgs, "vLLM startup subcommand is not fixed")
 					require.Equal(t, []LaunchControl{{Value: "{server.host}", Flags: []string{"--host"}}, {Value: "{server.port}", Flags: []string{"--port"}}}, policy.Controls, "incomplete vLLM controls")
 					valid = []string{"--host 127.0.0.1 --port 23456", "--host=127.0.0.1 --port=23456", "--port 23456 --model Qwen/Qwen2.5-0.5B-Instruct"}
+					invalid = []string{"--host 0.0.0.0", "--host=::", "--port 0", "--port 65536", "--port", "--port 23456 --port 23457", "-- --host 0.0.0.0"}
+				case "splash":
+					// Splash runs offline on loopback; only PAIR's proxy faces the network.
+					require.Equal(t, []string{"serve", "--offline", "--language-only", "--no-webui", "--idle-release", "off"}, policy.FixedArgs, "Splash startup policy is not fixed")
+					require.Equal(t, []LaunchControl{{Value: "{server.host}", Flags: []string{"--host"}}, {Value: "{server.port}", Flags: []string{"--port"}}}, policy.Controls, "incomplete Splash controls")
+					valid = []string{"--host 127.0.0.1 --port 23456", "--host=127.0.0.1 --port=23456", "--port 23456 --model local/Qwen3.8-27B-GGUF:Q4_K_M"}
 					invalid = []string{"--host 0.0.0.0", "--host=::", "--port 0", "--port 65536", "--port", "--port 23456 --port 23457", "-- --host 0.0.0.0"}
 				default:
 					require.Equal(t, []LaunchControl{{Value: "{server.host}:{server.port}", Env: []string{"OLLAMA_HOST"}}, {Value: "{cors.origins}", Env: []string{"OLLAMA_ORIGINS"}}}, policy.Controls, "incomplete Ollama controls")

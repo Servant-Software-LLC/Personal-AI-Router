@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 # nvpair-engine-manager
 
 A config-driven control plane for local inference engines. The bundled
-manifests support Ollama, LM Studio, llama.cpp, and vLLM. It manages everything about
+manifests support Ollama, LM Studio, llama.cpp, vLLM, and Splash. It manages everything about
 an engine **except serving inference**: detect, user-mode install,
 start/stop/restart, health, and config-declared actions. Adding an engine
 is a JSON manifest, not code.
@@ -54,6 +54,30 @@ not enlarge the PAIR installer. llama.cpp keeps its `auto` GPU-layer policy:
 supported NVIDIA/Metal devices can accelerate, while the dynamic CPU backend
 remains the fallback. Hardware acceptance, not `/health` alone, is required to
 claim GPU activation.
+
+### Splash
+
+The `splash` manifest runs [Splash](https://github.com/incoai/splash) on Apple
+Silicon macOS 26 or newer (`darwin/arm64` only). Install fetches the
+sha256-pinned release archive, checks the Mac, unpacks it into `{install_dir}`
+and writes a small `splash` wrapper that runs the release's own Python on its
+launcher. Splash serves one model per process on loopback port `8096`, behind
+the facade on `8095`.
+
+Splash runs `--offline` and serves only GGUF models already on the Mac. Its
+store is `~/.llamacpp`, shared with llama.cpp, in the Hugging Face cache layout
+(`models--<org>--<name>/refs/main` and `snapshots/<commit>/<file>.gguf`), and
+`HF_HUB_CACHE` points there too. `list_models` reads that store with
+`hf_cache.gguf`, so the list is there while Splash is stopped, and names each
+file `org/name:VARIANT`, such as `local/Qwen3.8-27B-GGUF:Q4_K_M`.
+`load_model` takes that id: `launch_model.variant` accepts it and
+`launch_model.file_flag` resolves it to the file, so the engine restarts with
+`--model <id> --model-dir <file>`. Splash then reports the id as its served
+model, which is what peers route by. Splash finds the model family's DFlash2
+draft (for example `incoai/Qwen3.8-27B-DFlash2`) in the same store without a
+network request, so the draft must be copied there too. Without it, the start
+fails with Splash's own message naming the draft. PAIR neither downloads nor
+deletes Splash models yet, and a request does not load one.
 
 ### vLLM
 
